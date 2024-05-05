@@ -18,9 +18,9 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
     eframe::run_native(
-        "Avara",
+        "🟨🦆",
         native_options,
-        Box::new(|cc| Box::new(avara::AvaraApp::new(cc))),
+        Box::new(|cc| Box::new(gomu_ori::GomuOriApp::new(cc))),
     )
 }
 
@@ -35,9 +35,9 @@ fn main() {
     wasm_bindgen_futures::spawn_local(async {
         eframe::WebRunner::new()
             .start(
-                "avara_canvas", // hardcode it
+                "gomu_ori_canvas", // hardcode it
                 web_options,
-                Box::new(|cc| Box::new(avara::AvaraApp::new(cc))),
+                Box::new(|cc| Box::new(gomu_ori::GomuOriApp::new(cc))),
             )
             .await
             .expect("failed to start eframe");

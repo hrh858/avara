@@ -1,5 +1,5 @@
-var cacheName = "avara";
-var filesToCache = ["./", "./index.html", "./avara.js", "./avara_bg.wasm"];
+var cacheName = "gomu_ori";
+var filesToCache = ["./", "./index.html", "./gomu_ori.js", "./avara_bg.wasm"];
 
 /* Start the service worker and cache all of the app's content */
 self.addEventListener("install", function (e) {

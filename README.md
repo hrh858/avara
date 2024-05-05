@@ -1,2 +1,2 @@
-# Avara (A Rust implementation of Pikuma's amazing "3D Computer Graphics Programming" course)
+# GOMU ORI (A Rust implementation of Pikuma's amazing "3D Computer Graphics Programming" course)
 WIP
