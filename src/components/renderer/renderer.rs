@@ -59,7 +59,7 @@ impl<'a> Renderer<'a> {
                 .map(|p| Self::project_point_orthographic(*p))
                 .map(|p| Self::translate_point(p, width, height, scale as f32))
                 // .for_each(|p| self.draw_rect(p.x, p.y, 3.0, 3.0, Color32::YELLOW))
-            .for_each(|p| self.draw_pixel(p.x, p.y, Color32::YELLOW))
+                .for_each(|p| self.draw_pixel(p.x, p.y, Color32::YELLOW))
         }
 
         let options = egui::TextureOptions::LINEAR;
@@ -82,7 +82,11 @@ impl<'a> Renderer<'a> {
     }
 
     fn draw_pixel(&mut self, x: f32, y: f32, color: Color32) {
-        if !(x > (self.surface.width - 1.0) || y > (self.surface.height - 1.0)) {
+        if !(x < 0.0
+            || y < 0.0
+            || x > (self.surface.width - 1.0)
+            || y > (self.surface.height - 1.0))
+        {
             self.buffer.pixels[y as usize * self.surface.width as usize + x as usize] = color;
         }
     }

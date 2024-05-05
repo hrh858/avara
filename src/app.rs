@@ -1,14 +1,11 @@
 use std::ops::RangeInclusive;
 
+use egui::Stroke;
+
 use crate::components::renderer::{
     vector3::{vec3, Vector3},
     Renderer,
 };
-
-/// We derive Deserialize/Serialize so we can persist app state on shutdown.
-// #[derive(serde::Deserialize, serde::Serialize)]
-// #[serde(default)] // if we add new fields, give them default values when deserializing old state
-const MAX_SHAPE_POINTS: usize = 512;
 
 #[derive(PartialEq)]
 pub enum Projection {
@@ -48,35 +45,63 @@ impl eframe::App for GomuOriApp {
         // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
         // For inspiration and more examples, go to https://emilk.github.io/egui
 
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            // The top panel is often a good place for a menu bar:
-            egui::menu::bar(ui, |ui| {
-                // NOTE: no File->Quit on web pages!
-                let is_web = cfg!(target_arch = "wasm32");
-                if !is_web {
-                    ui.menu_button("File", |ui| {
-                        if ui.button("Quit").clicked() {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                        }
-                    });
-                    ui.add_space(16.0);
-                }
-                egui::widgets::global_dark_light_mode_buttons(ui);
-                let scale_slider =
-                    egui::widgets::Slider::new(&mut self.scale, RangeInclusive::new(1.0, 15.0));
-                ui.add(scale_slider);
-                ui.radio_value(
-                    &mut self.projection,
-                    Projection::Orthographic,
-                    "Orthographic",
-                );
-                ui.radio_value(&mut self.projection, Projection::Perspective, "Perspective");
-            });
-        });
+        // egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+        // The top panel is often a good place for a menu bar:
+        //     egui::menu::bar(ui, |ui| {
+        //         // NOTE: no File->Quit on web pages!
+        //         let is_web = cfg!(target_arch = "wasm32");
+        //         if !is_web {
+        //             ui.menu_button("File", |ui| {
+        //                 if ui.button("Quit").clicked() {
+        //                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        //                 }
+        //             });
+        //             ui.add_space(16.0);
+        //         }
+        //         egui::widgets::global_dark_light_mode_buttons(ui);
+        //         let scale_slider =
+        //             egui::widgets::Slider::new(&mut self.scale, RangeInclusive::new(1.0, 15.0));
+        //         ui.radio_value(
+        //             &mut self.projection,
+        //             Projection::Orthographic,
+        //             "Orthographic",
+        //         );
+        //         ui.radio_value(&mut self.projection, Projection::Perspective, "Perspective");
+        //         ui.add(scale_slider);
+        //     });
+        // });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let _res = ui.centered_and_justified(|ui| Renderer::create(ui).draw(&self));
-        });
+        egui::CentralPanel::default()
+            .frame(egui::Frame::dark_canvas(&ctx.style()))
+            .show(ctx, |ui| {
+                // let _res = ui.centered_and_justIfied(|ui| Renderer::create(ui).draw(&self));
+                Renderer::create(ui).draw(&self);
+                egui::Area::new("Rendere Settings".into())
+                    .fixed_pos(egui::pos2(5.0, 5.0))
+                    .show(ctx, |ui| {
+                        // egui::Frame::popup(ui.style())
+                        // .stroke(Stroke::NONE)
+                        // .show(ui, |ui| {
+                        egui::CollapsingHeader::new("Renderer Settings").show(ui, |ui| {
+                            egui::CollapsingHeader::new("Projection").show(ui, |ui| {
+                                ui.radio_value(
+                                    &mut self.projection,
+                                    Projection::Orthographic,
+                                    "Orthographic",
+                                );
+                                ui.radio_value(
+                                    &mut self.projection,
+                                    Projection::Perspective,
+                                    "Perspective",
+                                );
+                            });
+                            ui.add(
+                                egui::Slider::new(&mut self.scale, 1.0..=15.0).text("Scale factor"),
+                            )
+                        })
+                        // });
+                    })
+            });
     }
 }
 
