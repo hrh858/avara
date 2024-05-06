@@ -1,10 +1,10 @@
 use egui::Color32;
 
-use crate::GomuOriApp;
+use crate::{app::Projection, GomuOriApp};
 
 use super::{
     vector2::{vec2, Vector2},
-    vector3::Vector3,
+    vector3::{vec3, Vector3},
 };
 
 pub struct Renderer<'a> {
@@ -51,13 +51,23 @@ impl<'a> Renderer<'a> {
 
         let width = self.surface.width;
         let height = self.surface.height;
-        let scale = state.scale;
 
         if let Some(points) = &state.shape {
             points
                 .into_iter()
-                .map(|p| Self::project_point_orthographic(*p))
-                .map(|p| Self::translate_point(p, width, height, scale as f32))
+                .map(|p| Self::rotate_point(*p, Angle::X, state.rotation.x))
+                .map(|p| Self::rotate_point(p, Angle::Y, state.rotation.y))
+                .map(|p| Self::rotate_point(p, Angle::Z, state.rotation.z))
+                .map(|p| match state.projection {
+                    Projection::Orthographic { scale } => {
+                        Self::project_point_orthographic(p, scale)
+                    }
+                    Projection::Perspective {
+                        camera_position,
+                        fov,
+                    } => Self::project_point_perspective(p, camera_position, fov),
+                })
+                .map(|p| Self::center_point(p, width, height))
                 // .for_each(|p| self.draw_rect(p.x, p.y, 3.0, 3.0, Color32::YELLOW))
                 .for_each(|p| self.draw_pixel(p.x, p.y, Color32::YELLOW))
         }
@@ -99,14 +109,44 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    fn project_point_orthographic(point: Vector3) -> Vector2 {
-        vec2(point.x, point.y)
+    fn project_point_orthographic(point: Vector3, scale: f32) -> Vector2 {
+        vec2(point.x * 30.0 * scale, point.y * 30.0 * scale)
     }
 
-    fn translate_point(point: Vector2, width: f32, height: f32, scale: f32) -> Vector2 {
-        vec2(
-            (width / 2.0) + point.x * (50.0 * scale),
-            (height / 2.0) + point.y * (50.0 * scale),
-        )
+    fn project_point_perspective(point: Vector3, camera_pos: Vector3, fov: f32) -> Vector2 {
+        let x = (point.x * fov) / (point.z + camera_pos.z); // This 1.0 is the distance between the camera and the
+                                                            // projection plane
+        let y = (point.y * fov) / (point.z + camera_pos.z);
+        vec2(x, y)
     }
+
+    fn center_point(point: Vector2, width: f32, height: f32) -> Vector2 {
+        vec2((width / 2.0) + point.x, (height / 2.0) + point.y)
+    }
+
+    fn rotate_point(point: Vector3, angle: Angle, rotation: f32) -> Vector3 {
+        match angle {
+            Angle::X => vec3(
+                point.x,
+                point.y * rotation.cos() - point.z * rotation.sin(),
+                point.y * rotation.sin() + point.z * rotation.cos(),
+            ),
+            Angle::Y => vec3(
+                point.x * rotation.cos() - point.z * rotation.sin(),
+                point.y,
+                point.x * rotation.sin() + point.z * rotation.cos(),
+            ),
+            Angle::Z => vec3(
+                point.x * rotation.cos() - point.y * rotation.sin(),
+                point.x * rotation.sin() + point.y * rotation.cos(),
+                point.z,
+            ),
+        }
+    }
+}
+
+enum Angle {
+    X,
+    Y,
+    Z,
 }

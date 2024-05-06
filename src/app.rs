@@ -1,6 +1,6 @@
-use std::ops::RangeInclusive;
+use std::f32::consts::PI;
 
-use egui::Stroke;
+use egui::{epaint::text, pos2};
 
 use crate::components::renderer::{
     vector3::{vec3, Vector3},
@@ -9,22 +9,33 @@ use crate::components::renderer::{
 
 #[derive(PartialEq)]
 pub enum Projection {
-    Orthographic,
-    Perspective,
+    Orthographic { scale: f32 },
+    Perspective { camera_position: Vector3, fov: f32 },
+}
+impl Projection {
+    fn default_orthographic() -> Self {
+        Projection::Orthographic { scale: 1.0 }
+    }
+
+    fn default_perspective() -> Self {
+        Projection::Perspective {
+            camera_position: vec3(0.0, 0.0, -1.0),
+            fov: 120.0,
+        }
+    }
 }
 
 pub struct GomuOriApp {
-    pub scale: f32,
     pub projection: Projection,
     pub shape: Option<Vec<Vector3>>,
+    pub rotation: Vector3,
 }
 
 impl Default for GomuOriApp {
     fn default() -> Self {
         Self {
-            projection: Projection::Orthographic,
-            scale: 1.0,
-            // shape: None,
+            rotation: vec3(0.0, 0.0, 0.0),
+            projection: Projection::default_perspective(),
             shape: Some(cube()),
         }
     }
@@ -37,44 +48,22 @@ impl GomuOriApp {
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
         Default::default()
     }
+
+    fn projection_is_perspective(&self) -> bool {
+        matches!(self.projection, Projection::Perspective { .. })
+    }
+
+    fn projection_is_orthographic(&self) -> bool {
+        matches!(self.projection, Projection::Orthographic { .. })
+    }
 }
 
 impl eframe::App for GomuOriApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
-        // For inspiration and more examples, go to https://emilk.github.io/egui
-
-        // egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-        // The top panel is often a good place for a menu bar:
-        //     egui::menu::bar(ui, |ui| {
-        //         // NOTE: no File->Quit on web pages!
-        //         let is_web = cfg!(target_arch = "wasm32");
-        //         if !is_web {
-        //             ui.menu_button("File", |ui| {
-        //                 if ui.button("Quit").clicked() {
-        //                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-        //                 }
-        //             });
-        //             ui.add_space(16.0);
-        //         }
-        //         egui::widgets::global_dark_light_mode_buttons(ui);
-        //         let scale_slider =
-        //             egui::widgets::Slider::new(&mut self.scale, RangeInclusive::new(1.0, 15.0));
-        //         ui.radio_value(
-        //             &mut self.projection,
-        //             Projection::Orthographic,
-        //             "Orthographic",
-        //         );
-        //         ui.radio_value(&mut self.projection, Projection::Perspective, "Perspective");
-        //         ui.add(scale_slider);
-        //     });
-        // });
-
         egui::CentralPanel::default()
             .frame(egui::Frame::dark_canvas(&ctx.style()))
             .show(ctx, |ui| {
-                // let _res = ui.centered_and_justIfied(|ui| Renderer::create(ui).draw(&self));
                 Renderer::create(ui).draw(&self);
                 egui::Area::new("Rendere Settings".into())
                     .fixed_pos(egui::pos2(5.0, 5.0))
@@ -84,22 +73,67 @@ impl eframe::App for GomuOriApp {
                         // .show(ui, |ui| {
                         egui::CollapsingHeader::new("Renderer Settings").show(ui, |ui| {
                             egui::CollapsingHeader::new("Projection").show(ui, |ui| {
-                                ui.radio_value(
-                                    &mut self.projection,
-                                    Projection::Orthographic,
-                                    "Orthographic",
-                                );
-                                ui.radio_value(
-                                    &mut self.projection,
-                                    Projection::Perspective,
-                                    "Perspective",
-                                );
+                                if ui
+                                    .radio(self.projection_is_orthographic(), "Orthographic")
+                                    .clicked()
+                                {
+                                    self.projection = Projection::default_orthographic();
+                                }
+                                if ui
+                                    .radio(self.projection_is_perspective(), "Perspective")
+                                    .clicked()
+                                {
+                                    self.projection = Projection::default_perspective();
+                                }
                             });
-                            ui.add(
-                                egui::Slider::new(&mut self.scale, 1.0..=15.0).text("Scale factor"),
-                            )
+
+                            match &mut self.projection {
+                                Projection::Orthographic { scale } => {
+                                    ui.add(
+                                        egui::Slider::new(scale, 1.0..=15.0).text("Scale factor"),
+                                    );
+                                }
+                                Projection::Perspective {
+                                    camera_position,
+                                    fov,
+                                } => {
+                                    ui.add(
+                                        egui::Slider::new(fov, 120.0..=240.0)
+                                            .text("FOV (Field of view)"),
+                                    );
+                                    ui.add(
+                                        egui::Slider::new(&mut camera_position.z, -1.0..=-15.0)
+                                            .text("Camera Z"),
+                                    );
+                                }
+                            }
+
+                            egui::CollapsingHeader::new("Object rotation")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    ui.add(
+                                        egui::Slider::new(
+                                            &mut self.rotation.x,
+                                            0.0..=std::f32::consts::PI * 2.0,
+                                        )
+                                        .text("X axis"),
+                                    );
+                                    ui.add(
+                                        egui::Slider::new(
+                                            &mut self.rotation.y,
+                                            0.0..=std::f32::consts::PI * 2.0,
+                                        )
+                                        .text("Y axis"),
+                                    );
+                                    ui.add(
+                                        egui::Slider::new(
+                                            &mut self.rotation.z,
+                                            0.0..=std::f32::consts::PI * 2.0,
+                                        )
+                                        .text("Z axis"),
+                                    );
+                                });
                         })
-                        // });
                     })
             });
     }
